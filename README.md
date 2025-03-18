@@ -1,9 +1,6 @@
 # pdfunite-with-bookmarks
-merges pdf files, add pdfbookmarks for each file, shift original ones one level down.
-
-**If you don't need extra pdfbookmarks with filenames** use `pdftk` directly:
-```pdftk INPUTFILE(s) cat output OUTPUTFILE``` 
-This also merges pdf files and keeps the bookmarks with updated pagenumbers intact.
+Merges pdf files **and add pdfbookmarks for each file on level one**.
+Original bookmarks will shift one level down.
 
 ## Usage
 place the file `pdfunite-with-bookmarks` in a directory which is included in PATH e.g. `/usr/bin`.
@@ -16,6 +13,10 @@ For help call:
 ```bash
 pdfunite-with-bookmarks --help
 ```
+
+**If you don't need extra pdfbookmarks with filenames** use `pdftk` directly:
+```pdftk INPUTFILE(s) cat output OUTPUTFILE``` 
+This also merges pdf files and keeps the bookmarks with updated pagenumbers intact.
 
 ## Dependencies
 - bash
