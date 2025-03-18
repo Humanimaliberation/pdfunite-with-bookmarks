@@ -1,0 +1,120 @@
+#!/bin/bash
+# Usage: this_script [OPTIONS] INPUTFILE(S) OUTPUTFILE
+
+# based on code from steventaitinger https://www.autohotkey.com/board/topic/98985-scripts-to-merge-pdfs-and-add-bookmarks-with-pdftk/
+# author: Humanimaliberation, year: 2025, licence: CC0 1.0 Universal
+
+
+# PREPERATIONS
+#--------------------------------------------------------------#
+
+# to modify stdout font
+bold=$(tput bold)
+normal=$(tput sgr0)
+
+#### replace sudo if not needed
+#### ref: https://askubuntu.com/questions/937506/ignore-sudo-in-bash-script-if-using-root
+#### muru's solution tweaked with Lekensteyn remark (bash, sh compatible)
+###if [[ $(id -u) = 0 ]]; then
+###    echo "I'm root! Ignore 'sudo' command" 
+###    sudo () # define sudo
+###    {
+###        printf "\nexecute\t '$@'\n\tinstead of 'sudo $@'\n"
+###        $@ # replaces "sudo sth" with "sth"
+###    } # caveat: "sudo -s sth" -> "-s sth"
+###fi
+###
+#### Install prerequirements if necessary
+#### Ref: https://stackoverflow.com/questions/1298066/how-can-i-check-if-a-package-is-installed-and-install-it-if-not
+#### Seb's solution (dpkg, apt compatible not for snap, etc.)
+###if [ $(dpkg-query -W -f='${Status}' pdftk 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+###    sudo apt update
+###    sudo apt install -y pdftk tput
+###fi
+
+# FUNCTIONS
+#--------------------------------------------------------------#
+
+_merge() {
+	# Usage: _merge [OPTIONS] INPUTFILE(S) OUTPUTFILE
+
+	# Internal Variables
+	while (( $# > 0 )); do
+		case $1 in
+			-h|--help)
+				echo -e "merge pdf files, add pdf bookmarks for each file and shift orginal ones one level down."
+				echo -e "\tusage:\t$( basename $0 ) [OPTIONS] INPUTFILE(S) OUTPUTFILE"
+				echo -e "\tdependencies: pdftk, tput"
+				exit
+				;;
+			*)
+				break
+				;;
+		esac
+	done
+	if (( $# < 2 )) ; then echo -e "not enough arguments provided! check '$( basename $0 ) --help'" ; return 0 ; fi
+
+    local _page_counter=1
+	local _inputlist_file="/tmp/my_inputfiles.txt"
+    local _bookmarks_file="/tmp/my_bookmarks.txt"
+    local _bookmarks_fmt="BookmarkBegin
+BookmarkTitle: %s
+BookmarkLevel: %s
+BookmarkPageNumber: %d
+"
+
+    # Remove old bookmarkfile ind inputfilelist
+    rm -f $_bookmarks_file $_inputlist_file
+
+	touch $_inputlist_file
+
+	while (( $# > 1 )) ; do
+		echo "$1" >> $_inputlist_file
+		shift 1
+	done
+	local _outputfile=$1
+	shift 1
+	
+    # Remove old outputfile
+    rm -f  $_outputfile
+
+	_files="$( cat $_inputlist_file )"
+	
+    # Generate bookmark file
+    for f in $_files ; do
+    	echo "prepare bookmarks for $f ..."
+        _filename=$(basename $f)
+        _title="${_filename%.*}"
+        # Append file entry as bookmark on level 1
+        printf "${_bookmarks_fmt}" "${_title}" "1" "${_page_counter}" >> ${_bookmarks_file}
+        # Append old bookmarks with level incremented by one and pagenumber incremented by pagecounter
+        pdftk $f dump_data_utf8 output | grep Bookmark | \
+        perl -pe "s/BookmarkLevel:\s\K\d*/$&+1/ge" | \
+        perl -pe "s/BookmarkPageNumber:\s\K\d*/$&+${_page_counter}-1/ge" >> ${_bookmarks_file}
+        # Update pagecounter
+        _num_pages="$(pdftk "$f" dump_data_utf8 | grep NumberOfPages | awk '{print $2}')"
+        _page_counter=$((_page_counter + _num_pages))
+    done
+
+    # Info
+	printf "\n${bold}Merge files together${normal}:\n"
+	for f in $_files ; do printf "\t%s\n" $f ; done
+	printf "\n${bold}To outputfile${normal}:\n\t%s ...\n" ${_outputfile}
+
+	# Merge
+	echo "Start merging ... (and update pdfbookmarks)"
+	pdftk $_files output - | \
+		 pdftk - update_info_utf8 "${_bookmarks_file}" output "${_outputfile}" 
+
+    # Info
+    printf "\t... finished.\n"
+
+	# remove temp files
+	rm _bookmarks_file _inputlist_file 2>/dev/null # not working if rm is alias for trash
+    return 1
+}
+
+# MAIN
+#--------------------------------------------------------------#
+
+_merge $@
