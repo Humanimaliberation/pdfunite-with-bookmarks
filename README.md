@@ -1,11 +1,7 @@
 # pdfunite-with-bookmarks
-merges pdf files and keeps pdfbookmarks of input files in output file intact with updated pagenumbers.
-( Similar to `pdftk INPUTFILE(s) cat output OUTPUTFILE` )
+merges pdf files, add pdfbookmarks for each file, shift original ones one level down.
 
-Additionally extra pdfbookmark-entries can be inserted for each file on level 1 
-whith titles based on filenames. If used the original bookmarks will shift one level down. 
-
-Without this file-based extra pdfbookmark entry one can also use `pdftk` directly:
+**If you don't need extra pdfbookmarks with filenames** use `pdftk` directly:
 ```pdftk INPUTFILE(s) cat output OUTPUTFILE``` 
 This also merges pdf files and keeps the bookmarks with updated pagenumbers intact.
 
